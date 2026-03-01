@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "db:list": "node scripts/db-list.js",
+    "db:backup": "node scripts/db-backup.js",
+    "db:restore": "node scripts/db-restore.js"
+  }
+}
