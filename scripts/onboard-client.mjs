@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-// ──────────────────────────────────────────────────────────────────
+// ------------------------------------------------------------------
 // HRplus Client Onboarding Script (Node.js)
-// ──────────────────────────────────────────────────────────────────
+// ------------------------------------------------------------------
 // Prerequisites:
 //   1. GitHub CLI installed: https://cli.github.com/
 //   2. Authenticated:  gh auth login
@@ -10,22 +10,20 @@
 // What it does:
 //   - Prompts for all required client-specific values
 //   - Creates (or updates) a GitHub Environment with secrets & variables
-//   - Optionally adds the client to the deploy workflows
 //   - Optionally triggers an immediate deploy to the new client
-// ──────────────────────────────────────────────────────────────────
+// ------------------------------------------------------------------
 
 import { execSync } from "child_process";
 import { createInterface } from "readline";
-import { readFileSync, writeFileSync, existsSync } from "fs";
 
-// ── Colours ──
+// -- Colours --
 const RED = "\x1b[0;31m";
 const GREEN = "\x1b[0;32m";
 const CYAN = "\x1b[0;36m";
 const YELLOW = "\x1b[1;33m";
 const NC = "\x1b[0m";
 
-// ── Helpers ──
+// -- Helpers --
 function run(cmd, opts = {}) {
   try {
     return execSync(cmd, { encoding: "utf-8", stdio: opts.stdio ?? "pipe", ...opts }).trim();
@@ -107,7 +105,7 @@ function ask(question) {
   });
 }
 
-// For sensitive values — still shows typing (Node has no built-in hidden input
+// For sensitive values - still shows typing (Node has no built-in hidden input
 // without raw mode), but keeps prompts consistent. Mark with [secret] so user knows.
 async function askSecret(question) {
   return ask(`${question} ${YELLOW}[secret]${NC}: `);
@@ -138,6 +136,7 @@ function setVariable(repo, envName, name, value) {
     ok = run(`gh api repos/${repo}/environments/${envName}/variables -X POST -f name=${name} -f value="${value.replace(/"/g, '\\"')}"`)
       ?? run(`gh api repos/${repo}/environments/${envName}/variables/${name} -X PATCH -f value="${value.replace(/"/g, '\\"')}"`);
   }
+
   if (ok !== null) {
     console.log(`  ${GREEN}✓${NC} Variable: ${name}`);
   } else {
@@ -145,41 +144,26 @@ function setVariable(repo, envName, name, value) {
   }
 }
 
-function removeNoClientsBlock(filePath) {
-  if (!existsSync(filePath)) return;
-  let content = readFileSync(filePath, "utf-8");
-  // Remove the no-clients job block
-  content = content.replace(/\n {2}no-clients:[\s\S]*?echo "No clients configured yet[^"]*"\n?/g, "\n");
-  // Clean up multiple blank lines
-  content = content.replace(/\n{3,}/g, "\n\n");
-  writeFileSync(filePath, content, "utf-8");
-}
-
-// ──────────────────────────────────────────────────────────────────
+// ------------------------------------------------------------------
 // Main
-// ──────────────────────────────────────────────────────────────────
+// ------------------------------------------------------------------
 async function main() {
-  // ── Ensure gh CLI is available ──
   await ensureGhCli();
 
-  // ── Determine repo ──
   const REPO = run('gh repo view --json nameWithOwner -q ".nameWithOwner"');
   if (!REPO) {
     console.error(`${RED}Error: Could not determine repo. Run this from inside your git repo, or run 'gh auth login' first.${NC}`);
     process.exit(1);
   }
 
-  const DEPLOY_WORKFLOW = ".github/workflows/deploy-all.yml";
-  const MANUAL_WORKFLOW = ".github/workflows/deploy-manual.yml";
-
   console.log();
-  console.log(`${CYAN}╔══════════════════════════════════════════════════════╗${NC}`);
-  console.log(`${CYAN}║       HRplus – Client Onboarding                    ║${NC}`);
-  console.log(`${CYAN}║       Repo: ${YELLOW}${REPO}${NC}`);
-  console.log(`${CYAN}╚══════════════════════════════════════════════════════╝${NC}`);
+  console.log(`${CYAN}======================================================${NC}`);
+  console.log(`${CYAN}HRplus - Client Onboarding${NC}`);
+  console.log(`${CYAN}Repo: ${YELLOW}${REPO}${NC}`);
+  console.log(`${CYAN}======================================================${NC}`);
   console.log();
 
-  // ── 0. Check for repo-level SUPABASE_ACCESS_TOKEN ──
+  // -- 0. Check for repo-level SUPABASE_ACCESS_TOKEN --
   const repoSecrets = run(`gh secret list --repo ${REPO}`) ?? "";
   if (repoSecrets.includes("SUPABASE_ACCESS_TOKEN")) {
     console.log(`${GREEN}✓ SUPABASE_ACCESS_TOKEN found at repo level.${NC}`);
@@ -199,7 +183,7 @@ async function main() {
   }
   console.log();
 
-  // ── 1. Client name ──
+  // -- 1. Client name --
   const CLIENT_NAME = await ask(`${GREEN}Client environment name${NC} (e.g. client-acme): `);
   if (!CLIENT_NAME) {
     console.error(`${RED}Client name is required.${NC}`);
@@ -214,8 +198,8 @@ async function main() {
   }
   console.log();
 
-  // ── 2. Prompt for all values ──
-  console.log(`${CYAN}── Supabase Project Details ──${NC}`);
+  // -- 2. Prompt for all values --
+  console.log(`${CYAN}-- Supabase Project Details --${NC}`);
   const SUPABASE_PROJECT_REF = await ask("  Supabase Project Ref (e.g. hmdewkkytchwrenqagkw): ");
   const VITE_SUPABASE_URL = await ask("  Supabase URL (e.g. https://xyz.supabase.co): ");
   const VITE_SUPABASE_ANON_KEY = await ask("  Supabase Anon Key (the publishable key): ");
@@ -224,12 +208,12 @@ async function main() {
   const DB_PASSWORD = await askSecret("  Supabase DB Password");
   console.log();
 
-  console.log(`${CYAN}── Azure Static Web App ──${NC}`);
+  console.log(`${CYAN}-- Azure Static Web App --${NC}`);
   console.log(`   ${CYAN}Found in: Azure Portal → your Static Web App resource → Manage deployment token → Copy${NC}`);
   const AZURE_SWA_TOKEN = await askSecret("  Azure SWA Deployment Token");
   console.log();
 
-  console.log(`${CYAN}── Edge Function Secrets ──${NC}`);
+  console.log(`${CYAN}-- Edge Function Secrets --${NC}`);
   console.log(`  ${YELLOW}(Press Enter to skip any you want to set later)${NC}`);
   const LOVABLE_API_KEY = await askSecret("  LOVABLE_API_KEY");
   const RESEND_API_KEY = await askSecret("  RESEND_API_KEY");
@@ -238,19 +222,19 @@ async function main() {
   const CLOUDFLARE_ZONE_ID = await ask("  CLOUDFLARE_ZONE_ID: ");
   console.log();
 
-  // ── 3. Create / update environment ──
+  // -- 3. Create / update environment --
   console.log(`${CYAN}Creating/updating environment '${CLIENT_NAME}'...${NC}`);
   run(`gh api repos/${REPO}/environments/${CLIENT_NAME} -X PUT`);
 
   console.log();
-  console.log(`${CYAN}── Setting Variables (non-sensitive, plaintext) ──${NC}`);
+  console.log(`${CYAN}-- Setting Variables (non-sensitive, plaintext) --${NC}`);
   setVariable(REPO, CLIENT_NAME, "SUPABASE_PROJECT_REF", SUPABASE_PROJECT_REF);
   setVariable(REPO, CLIENT_NAME, "VITE_SUPABASE_URL", VITE_SUPABASE_URL);
   setVariable(REPO, CLIENT_NAME, "VITE_SUPABASE_ANON_KEY", VITE_SUPABASE_ANON_KEY);
   setVariable(REPO, CLIENT_NAME, "CLOUDFLARE_ZONE_ID", CLOUDFLARE_ZONE_ID);
 
   console.log();
-  console.log(`${CYAN}── Setting Secrets (encrypted) ──${NC}`);
+  console.log(`${CYAN}-- Setting Secrets (encrypted) --${NC}`);
   setSecret(REPO, CLIENT_NAME, "DB_PASSWORD", DB_PASSWORD);
   setSecret(REPO, CLIENT_NAME, "AZURE_SWA_TOKEN", AZURE_SWA_TOKEN);
   setSecret(REPO, CLIENT_NAME, "LOVABLE_API_KEY", LOVABLE_API_KEY);
@@ -261,78 +245,13 @@ async function main() {
   console.log();
   console.log(`${GREEN}✅ Environment '${CLIENT_NAME}' configured.${NC}`);
 
-  // ── 4. Optionally add to deploy workflows ──
-  const JOB_SLUG = CLIENT_NAME.replace(/^client-/, "");
-  console.log();
-  const addToWorkflows = await ask(`${GREEN}Add '${CLIENT_NAME}' to the deploy workflows?${NC} [y/N]: `);
-
-  if (/^[Yy]$/.test(addToWorkflows)) {
-    // ── 4a. Update deploy-all.yml ──
-    if (existsSync(DEPLOY_WORKFLOW)) {
-      const content = readFileSync(DEPLOY_WORKFLOW, "utf-8");
-      if (content.includes(`deploy-${JOB_SLUG}:`)) {
-        console.log(`${YELLOW}⚠  '${CLIENT_NAME}' is already in ${DEPLOY_WORKFLOW}.${NC}`);
-      } else {
-        removeNoClientsBlock(DEPLOY_WORKFLOW);
-        const jobBlock = `
-  deploy-${JOB_SLUG}:
-    uses: ./.github/workflows/_deploy-client.yml
-    with:
-      environment: ${CLIENT_NAME}
-    secrets: inherit
-`;
-        let updated = readFileSync(DEPLOY_WORKFLOW, "utf-8");
-        updated = updated.trimEnd() + "\n" + jobBlock;
-        writeFileSync(DEPLOY_WORKFLOW, updated, "utf-8");
-        console.log(`${GREEN}✓ Added '${CLIENT_NAME}' to ${DEPLOY_WORKFLOW}.${NC}`);
-        console.log(`${YELLOW}  Remember to commit and push this change!${NC}`);
-      }
-    } else {
-      console.log(`${RED}⚠  ${DEPLOY_WORKFLOW} not found.${NC}`);
-    }
-
-    // ── 4b. Update deploy-manual.yml ──
-    if (existsSync(MANUAL_WORKFLOW)) {
-      let content = readFileSync(MANUAL_WORKFLOW, "utf-8");
-      if (content.includes(`deploy-all-${JOB_SLUG}:`)) {
-        console.log(`${YELLOW}⚠  '${CLIENT_NAME}' already in ${MANUAL_WORKFLOW}.${NC}`);
-      } else {
-        removeNoClientsBlock(MANUAL_WORKFLOW);
-        content = readFileSync(MANUAL_WORKFLOW, "utf-8");
-
-        // Add to dropdown options (before "- ALL")
-        if (!content.includes(`          - ${CLIENT_NAME}`)) {
-          content = content.replace(
-            /^( +- ALL)$/m,
-            `          - ${CLIENT_NAME}\n$1`
-          );
-        }
-
-        // Append the deploy-all job
-        const jobBlock = `
-  deploy-all-${JOB_SLUG}:
-    if: inputs.client == 'ALL'
-    uses: ./.github/workflows/_deploy-client.yml
-    with:
-      environment: ${CLIENT_NAME}
-    secrets: inherit
-`;
-        content = content.trimEnd() + "\n" + jobBlock;
-        writeFileSync(MANUAL_WORKFLOW, content, "utf-8");
-        console.log(`${GREEN}✓ Added '${CLIENT_NAME}' to ${MANUAL_WORKFLOW}.${NC}`);
-      }
-    } else {
-      console.log(`${RED}⚠  ${MANUAL_WORKFLOW} not found.${NC}`);
-    }
-  }
-
-  // ── 5. Optionally trigger immediate deploy ──
+  // -- 4. Optionally trigger immediate deploy --
   console.log();
   const deployNow = await ask(`${GREEN}Deploy to '${CLIENT_NAME}' now?${NC} [y/N]: `);
   if (/^[Yy]$/.test(deployNow)) {
     console.log(`${CYAN}Triggering manual deploy for '${CLIENT_NAME}'...${NC}`);
-    const triggered = run(`gh workflow run deploy-manual.yml -f client=${CLIENT_NAME}`)
-      ?? run(`gh workflow run "Manual Deploy" -f client=${CLIENT_NAME}`);
+    const triggered = run(`gh workflow run deploy-manual.yml -f environment=${CLIENT_NAME}`)
+      ?? run(`gh workflow run "Manual Deploy" -f environment=${CLIENT_NAME}`);
     if (triggered !== null) {
       console.log(`${GREEN}✓ Deploy triggered. Check status: gh run list --workflow=deploy-manual.yml${NC}`);
     } else {
@@ -341,11 +260,11 @@ async function main() {
   }
 
   console.log();
-  console.log(`${CYAN}╔══════════════════════════════════════════════════════╗${NC}`);
-  console.log(`${CYAN}║  Done! Summary:                                      ║${NC}`);
-  console.log(`${CYAN}║  Environment: ${YELLOW}${CLIENT_NAME}${NC}`);
-  console.log(`${CYAN}║  Repo:        ${YELLOW}${REPO}${NC}`);
-  console.log(`${CYAN}╚══════════════════════════════════════════════════════╝${NC}`);
+  console.log(`${CYAN}======================================================${NC}`);
+  console.log(`${CYAN}Done! Summary:${NC}`);
+  console.log(`${CYAN}Environment: ${YELLOW}${CLIENT_NAME}${NC}`);
+  console.log(`${CYAN}Repo:        ${YELLOW}${REPO}${NC}`);
+  console.log(`${CYAN}======================================================${NC}`);
   console.log();
   console.log(`  View environment: ${YELLOW}https://github.com/${REPO}/settings/environments/${CLIENT_NAME}${NC}`);
   console.log(`  View actions:     ${YELLOW}https://github.com/${REPO}/actions${NC}`);
