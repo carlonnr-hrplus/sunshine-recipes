@@ -1,60 +1,46 @@
-# ──────────────────────────────────────────────────────────────────
-# Manual Deploy — trigger from the GitHub Actions UI
-# ──────────────────────────────────────────────────────────────────
-# Supports:
-#   - Deploy to a single client (pick from dropdown)
-#   - Deploy to ALL clients at once
-#
-# Trigger: Actions tab → "Manual Deploy" → Run workflow → pick client
-# ──────────────────────────────────────────────────────────────────
 name: Manual Deploy
+run-name: Manual deploy to ${{ inputs.environment }}
 
 on:
   workflow_dispatch:
     inputs:
-      client:
-        description: 'Client to deploy (or ALL)'
+      environment:
+        description: 'GitHub environment name to deploy'
         required: true
-        type: choice
-        options:
-          - sunshine-recipes-a
-          - sunshine-recipes-b
-          - ALL
+        type: string
 
-# ── Deploy a single client ──
 jobs:
-  deploy-single:
-    if: inputs.client != 'ALL'
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.validate.outputs.environment }}
+    steps:
+      - name: Validate environment exists
+        id: validate
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ENV_NAME: ${{ inputs.environment }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -e
+          OWNER="${REPO%/*}"
+          REPO_NAME="${REPO#*/}"
+
+          STATUS=$(curl -s -o /tmp/env.json -w "%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$OWNER/$REPO_NAME/environments/$ENV_NAME")
+
+          if [ "$STATUS" != "200" ]; then
+            echo "Environment '$ENV_NAME' does not exist."
+            exit 1
+          fi
+
+          echo "environment=$ENV_NAME" >> "$GITHUB_OUTPUT"
+
+  deploy:
+    needs: validate
     uses: ./.github/workflows/_deploy-client.yml
     with:
-      environment: ${{ inputs.client }}
-    secrets: inherit
-
-  # ── Deploy all clients ──
-  # ────────────────────────────────────────────────────────────
-  # No clients yet. The onboard-client.sh script will add jobs
-  # here and add options to the dropdown above. Each client gets:
-  #
-  #   deploy-all-<name>:
-  #     if: inputs.client == 'ALL'
-  #     uses: ./.github/workflows/_deploy-client.yml
-  #     with:
-  #       environment: client-<name>
-  #     secrets: inherit
-  #
-  # Plus their name added to the 'options' list above.
-  # ────────────────────────────────────────────────────────────
-
-  deploy-all-sunshine-recipes-a:
-    if: inputs.client == 'ALL'
-    uses: ./.github/workflows/_deploy-client.yml
-    with:
-      environment: sunshine-recipes-a
-    secrets: inherit
-
-  deploy-all-sunshine-recipes-b:
-    if: inputs.client == 'ALL'
-    uses: ./.github/workflows/_deploy-client.yml
-    with:
-      environment: sunshine-recipes-b
+      environment: ${{ needs.validate.outputs.environment }}
     secrets: inherit

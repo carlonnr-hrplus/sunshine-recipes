@@ -101,6 +101,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Remove local .env files to avoid accidental leakage
+        run: rm -f .env .env.local .env.* || true
+
       # Only VITE_* variables are passed here.
       # Vite ignores everything else — but we keep the env block
       # minimal to make the boundary crystal clear.
