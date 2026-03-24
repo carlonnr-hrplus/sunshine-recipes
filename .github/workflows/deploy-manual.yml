@@ -18,6 +18,7 @@ on:
         type: choice
         options:
           - sunshine-recipes-a
+          - sunshine-recipes-b
           - ALL
 
 # ── Deploy a single client ──
@@ -49,4 +50,11 @@ jobs:
     uses: ./.github/workflows/_deploy-client.yml
     with:
       environment: sunshine-recipes-a
+    secrets: inherit
+
+  deploy-all-sunshine-recipes-b:
+    if: inputs.client == 'ALL'
+    uses: ./.github/workflows/_deploy-client.yml
+    with:
+      environment: sunshine-recipes-b
     secrets: inherit

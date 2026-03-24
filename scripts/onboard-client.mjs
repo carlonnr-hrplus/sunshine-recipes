@@ -219,10 +219,13 @@ async function main() {
   const SUPABASE_PROJECT_REF = await ask("  Supabase Project Ref (e.g. hmdewkkytchwrenqagkw): ");
   const VITE_SUPABASE_URL = await ask("  Supabase URL (e.g. https://xyz.supabase.co): ");
   const VITE_SUPABASE_ANON_KEY = await ask("  Supabase Anon Key (the publishable key): ");
+  console.log(`   ${CYAN}Found in: Supabase Dashboard → Project → Database → Settings → Database password${NC}`);
+  console.log(`   ${CYAN}(It is the password that was set when creating the project, or reset it there)${NC}`);
   const DB_PASSWORD = await askSecret("  Supabase DB Password");
   console.log();
 
   console.log(`${CYAN}── Azure Static Web App ──${NC}`);
+  console.log(`   ${CYAN}Found in: Azure Portal → your Static Web App resource → Manage deployment token → Copy${NC}`);
   const AZURE_SWA_TOKEN = await askSecret("  Azure SWA Deployment Token");
   console.log();
 

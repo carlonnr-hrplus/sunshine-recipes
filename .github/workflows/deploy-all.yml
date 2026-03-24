@@ -27,3 +27,9 @@ jobs:
     with:
       environment: sunshine-recipes-a
     secrets: inherit
+
+  deploy-sunshine-recipes-b:
+    uses: ./.github/workflows/_deploy-client.yml
+    with:
+      environment: sunshine-recipes-b
+    secrets: inherit
