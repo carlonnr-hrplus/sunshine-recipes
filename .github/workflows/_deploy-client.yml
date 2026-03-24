@@ -38,7 +38,7 @@ jobs:
 
       # ── Run database migrations ──
       - name: Push DB migrations
-        run: supabase db push --non-interactive
+        run: supabase db push
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
@@ -57,7 +57,7 @@ jobs:
       - name: Deploy Edge Functions
         if: steps.check_funcs.outputs.has_functions == 'true'
         run: |
-          supabase functions deploy --non-interactive
+          supabase functions deploy
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
@@ -86,7 +86,7 @@ jobs:
           [ -n "$CLOUDFLARE_ZONE_ID" ] && printf 'CLOUDFLARE_ZONE_ID=%s\n' "$CLOUDFLARE_ZONE_ID" >> "$secrets_file"
 
           if [ -s "$secrets_file" ]; then
-            supabase secrets set --env-file "$secrets_file" --non-interactive
+            supabase secrets set --env-file "$secrets_file"
           else
             echo "No edge function secrets to push."
           fi
