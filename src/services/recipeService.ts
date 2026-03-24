@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabaseClient';
+import { deleteRecipeImage, isStorageUrl } from '@/services/imageService';
 import type { RecipeWithAuthor, RecipeInsert, RecipeUpdate, FavoriteRecipe } from '@/types/recipe';
 
 const RECIPE_WITH_AUTHOR = '*, profiles:user_id(email, full_name)';
@@ -79,6 +80,18 @@ export async function updateRecipe(
   id: string,
   recipe: RecipeUpdate,
 ): Promise<RecipeWithAuthor> {
+  // If the image is changing, clean up the old storage image (best-effort)
+  if (recipe.image_url !== undefined) {
+    const { data: existing } = await supabase
+      .from('recipes')
+      .select('image_url')
+      .eq('id', id)
+      .single();
+    if (existing && isStorageUrl(existing.image_url) && existing.image_url !== recipe.image_url) {
+      await deleteRecipeImage(existing.image_url);
+    }
+  }
+
   const { data, error } = await supabase
     .from('recipes')
     .update({ ...recipe, updated_at: new Date().toISOString() })
@@ -91,8 +104,20 @@ export async function updateRecipe(
 }
 
 export async function deleteRecipe(id: string): Promise<void> {
+  // Fetch the image URL before deleting so we can clean up storage
+  const { data: existing } = await supabase
+    .from('recipes')
+    .select('image_url')
+    .eq('id', id)
+    .single();
+
   const { error } = await supabase.from('recipes').delete().eq('id', id);
   if (error) throw error;
+
+  // Best-effort storage cleanup
+  if (existing) {
+    await deleteRecipeImage(existing.image_url);
+  }
 }
 
 /** Fetch favorite recipes via the secure RPC (server-side data masking) */

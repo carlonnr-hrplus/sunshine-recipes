@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { CATEGORIES } from '@/constants/categories';
 import { recipeSchema, type RecipeFormData } from '@/utils/validation';
+import { ImageUpload } from '@/components/ImageUpload';
 import type { RecipeInsert } from '@/types/recipe';
 
 interface RecipeFormProps {
@@ -278,24 +279,13 @@ export function RecipeForm({
         </div>
       </div>
 
-      {/* Image URL */}
-      <div>
-        <label htmlFor="image_url" className="mb-1 block text-sm font-medium text-gray-700">
-          Image URL <span className="text-gray-400">(optional)</span>
-        </label>
-        <input
-          id="image_url"
-          type="url"
-          value={imageUrl}
-          onChange={(e) => setImageUrl(e.target.value)}
-          disabled={submitting}
-          placeholder="https://example.com/image.jpg"
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm
-            focus:border-sunshine-400 focus:outline-none focus:ring-2 focus:ring-sunshine-200
-            disabled:bg-gray-50"
-        />
-        {errors.image_url && <p className="mt-1 text-xs text-red-600">{errors.image_url}</p>}
-      </div>
+      {/* Image */}
+      <ImageUpload
+        value={imageUrl}
+        onChange={setImageUrl}
+        disabled={submitting}
+        error={errors.image_url}
+      />
 
       {/* Visibility */}
       <fieldset className="space-y-3 rounded-lg border border-gray-200 p-4">

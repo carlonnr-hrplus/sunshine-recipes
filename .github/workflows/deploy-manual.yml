@@ -1,0 +1,52 @@
+# ──────────────────────────────────────────────────────────────────
+# Manual Deploy — trigger from the GitHub Actions UI
+# ──────────────────────────────────────────────────────────────────
+# Supports:
+#   - Deploy to a single client (pick from dropdown)
+#   - Deploy to ALL clients at once
+#
+# Trigger: Actions tab → "Manual Deploy" → Run workflow → pick client
+# ──────────────────────────────────────────────────────────────────
+name: Manual Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      client:
+        description: 'Client to deploy (or ALL)'
+        required: true
+        type: choice
+        options:
+          - sunshine-recipes-a
+          - ALL
+
+# ── Deploy a single client ──
+jobs:
+  deploy-single:
+    if: inputs.client != 'ALL'
+    uses: ./.github/workflows/_deploy-client.yml
+    with:
+      environment: ${{ inputs.client }}
+    secrets: inherit
+
+  # ── Deploy all clients ──
+  # ────────────────────────────────────────────────────────────
+  # No clients yet. The onboard-client.sh script will add jobs
+  # here and add options to the dropdown above. Each client gets:
+  #
+  #   deploy-all-<name>:
+  #     if: inputs.client == 'ALL'
+  #     uses: ./.github/workflows/_deploy-client.yml
+  #     with:
+  #       environment: client-<name>
+  #     secrets: inherit
+  #
+  # Plus their name added to the 'options' list above.
+  # ────────────────────────────────────────────────────────────
+
+  deploy-all-sunshine-recipes-a:
+    if: inputs.client == 'ALL'
+    uses: ./.github/workflows/_deploy-client.yml
+    with:
+      environment: sunshine-recipes-a
+    secrets: inherit

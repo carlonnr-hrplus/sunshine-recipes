@@ -1,0 +1,107 @@
+# ──────────────────────────────────────────────────────────────────
+# Reusable deploy workflow — called by deploy-all.yml and deploy-manual.yml
+# This avoids duplicating the deploy steps in two places.
+# ──────────────────────────────────────────────────────────────────
+name: _deploy-client (reusable)
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        required: true
+        type: string
+        description: 'The GitHub environment name (e.g. client-acme)'
+
+jobs:
+  deploy:
+    name: Deploy → ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment }}
+
+    steps:
+      # ── Clone the repo ──
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Install Supabase CLI ──
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      # ── Link to client's Supabase project ──
+      - name: Link Supabase project
+        run: supabase link --project-ref ${{ vars.SUPABASE_PROJECT_REF }}
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+
+      # ── Run database migrations ──
+      - name: Push DB migrations
+        run: supabase db push
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+
+      # ── Deploy all Edge Functions ──
+      - name: Deploy Edge Functions
+        run: supabase functions deploy
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
+      # ── Push runtime secrets into the Supabase project ──
+      #    These are read by Edge Functions via Deno.env.get()
+      #    Only non-empty values are pushed.
+      - name: Push Edge Function secrets
+        run: |
+          ARGS=""
+          [ -n "$LOVABLE_API_KEY" ]         && ARGS="$ARGS LOVABLE_API_KEY=$LOVABLE_API_KEY"
+          [ -n "$RESEND_API_KEY" ]           && ARGS="$ARGS RESEND_API_KEY=$RESEND_API_KEY"
+          [ -n "$PAYMENT_WEBHOOK_SECRET" ]   && ARGS="$ARGS PAYMENT_WEBHOOK_SECRET=$PAYMENT_WEBHOOK_SECRET"
+          [ -n "$CLOUDFLARE_API_TOKEN" ]     && ARGS="$ARGS CLOUDFLARE_API_TOKEN=$CLOUDFLARE_API_TOKEN"
+          [ -n "$CLOUDFLARE_ZONE_ID" ]       && ARGS="$ARGS CLOUDFLARE_ZONE_ID=$CLOUDFLARE_ZONE_ID"
+          if [ -n "$ARGS" ]; then
+            supabase secrets set $ARGS
+          else
+            echo "No edge function secrets to push."
+          fi
+        env:
+          # CLI authentication (never sent to Supabase as a project secret)
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          # Values to push into the Supabase project as runtime secrets
+          LOVABLE_API_KEY: ${{ secrets.LOVABLE_API_KEY }}
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          PAYMENT_WEBHOOK_SECRET: ${{ secrets.PAYMENT_WEBHOOK_SECRET }}
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ZONE_ID: ${{ vars.CLOUDFLARE_ZONE_ID }}
+
+      # ── Install Node & build the frontend ──
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Only VITE_* variables are passed here.
+      # Vite ignores everything else — but we keep the env block
+      # minimal to make the boundary crystal clear.
+      - name: Build frontend
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+          VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
+          VITE_SUPABASE_PROJECT_ID: ${{ vars.SUPABASE_PROJECT_REF }}
+
+      # ── Deploy to Azure Static Web Apps ──
+      - name: Deploy to Azure SWA
+        uses: azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ secrets.AZURE_SWA_TOKEN }}
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          action: upload
+          app_location: /        # where package.json is (repo root)
+          output_location: dist  # vite build output directory
+          skip_app_build: true   # we already built above

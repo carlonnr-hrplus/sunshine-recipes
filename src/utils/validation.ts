@@ -32,7 +32,12 @@ export const recipeSchema = z.object({
   category: z.enum(CATEGORIES, {
     errorMap: () => ({ message: 'Please select a category' }),
   }),
-  image_url: z.string().url('Must be a valid URL').nullable().or(z.literal('')),
+  image_url: z
+    .string()
+    .url('Must be a valid URL')
+    .nullable()
+    .or(z.literal(''))
+    .or(z.null()),
   is_public: z.boolean(),
   is_anonymous: z.boolean(),
 });
