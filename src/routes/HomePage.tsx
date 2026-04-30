@@ -47,7 +47,7 @@ export function HomePage() {
           ☀️ Sunshine Recipes
         </h1>
         <p className="mt-2 text-gray-500">
-          Discover and share your favorite recipes
+          Discover and share your favorite recipes 🍽️
         </p>
       </div>
 
