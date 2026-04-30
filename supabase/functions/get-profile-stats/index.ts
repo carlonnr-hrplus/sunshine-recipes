@@ -24,7 +24,6 @@ serve(async (req) => {
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Verify the calling user
     const userClient = createClient(supabaseUrl, anonKey, {
       global: { headers: { Authorization: authHeader } },
     });
@@ -38,10 +37,9 @@ serve(async (req) => {
 
     const adminClient = createClient(supabaseUrl, serviceRoleKey);
 
-    // User's recipes
     const { data: userRecipes } = await adminClient
       .from('recipes')
-      .select('id, title')
+      .select('id, title, is_public')
       .eq('user_id', user.id);
 
     const recipeIds = (userRecipes ?? []).map((r) => r.id);
@@ -71,9 +69,14 @@ serve(async (req) => {
       }
     }
 
+    const publicCount = (userRecipes ?? []).filter((r) => r.is_public).length;
+    const privateCount = (userRecipes ?? []).filter((r) => !r.is_public).length;
+
     return new Response(
       JSON.stringify({
         recipes_count: recipeIds.length,
+        public_recipes: publicCount,
+        private_recipes: privateCount,
         total_favorites_received: totalFavoritesReceived,
         most_favorited_recipe: mostFavoritedRecipe,
       }),

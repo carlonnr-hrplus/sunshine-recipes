@@ -61,6 +61,7 @@ serve(async (req) => {
         total_recipes: totalRecipes ?? 0,
         by_category: byCategory,
         top_favorited: topFavorited,
+        generated_at: new Date().toISOString(),
       }),
       {
         status: 200,
