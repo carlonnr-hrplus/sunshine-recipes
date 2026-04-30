@@ -6,6 +6,8 @@ interface RecipeCardProps {
   recipe: RecipeWithAuthor;
   isFavorite: boolean;
   onToggleFavorite: (recipeId: string) => void;
+  /** Called when the user wants to duplicate this recipe into their own account */
+  onDuplicate?: (recipeId: string) => void;
   /** When true, show a placeholder card for privatized recipes the user doesn't own */
   isUnavailable?: boolean;
 }
@@ -20,6 +22,7 @@ export function RecipeCard({
   recipe,
   isFavorite,
   onToggleFavorite,
+  onDuplicate,
   isUnavailable = false,
 }: RecipeCardProps) {
   const { user } = useAuth();
@@ -91,19 +94,35 @@ export function RecipeCard({
             {recipe.is_public ? 'Public' : 'Private'}
           </span>
         )}
-        {/* Favorite button */}
+        {/* Action buttons */}
         {user && (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.preventDefault();
-              onToggleFavorite(recipe.id);
-            }}
-            className="absolute right-3 top-3 rounded-full bg-white/90 p-1.5 shadow-sm transition-colors hover:bg-white"
-            aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
-          >
-            <span className="text-lg">{isFavorite ? '❤️' : '🤍'}</span>
-          </button>
+          <div className="absolute right-3 top-3 flex flex-col gap-1.5">
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                onToggleFavorite(recipe.id);
+              }}
+              className="rounded-full bg-white/90 p-1.5 shadow-sm transition-colors hover:bg-white"
+              aria-label={isFavorite ? 'Remove from favorites' : 'Add to favorites'}
+            >
+              <span className="text-lg">{isFavorite ? '❤️' : '🤍'}</span>
+            </button>
+            {!isOwner && recipe.is_public && onDuplicate && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  onDuplicate(recipe.id);
+                }}
+                className="rounded-full bg-white/90 p-1.5 shadow-sm transition-colors hover:bg-white"
+                aria-label="Copy recipe to my account"
+                title="Copy recipe"
+              >
+                <span className="text-lg">📋</span>
+              </button>
+            )}
+          </div>
         )}
       </div>
 

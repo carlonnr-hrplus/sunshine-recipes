@@ -47,6 +47,12 @@ export function Navbar() {
               >
                 Favorites
               </Link>
+              <Link
+                to="/profile"
+                className="text-sm font-medium text-gray-600 hover:text-sunshine-600 transition-colors"
+              >
+                Profile
+              </Link>
             </>
           )}
           {user ? (
@@ -98,6 +104,9 @@ export function Navbar() {
                 </Link>
                 <Link to="/favorites" onClick={() => setMenuOpen(false)} className="text-sm font-medium text-gray-600 py-1">
                   Favorites
+                </Link>
+                <Link to="/profile" onClick={() => setMenuOpen(false)} className="text-sm font-medium text-gray-600 py-1">
+                  Profile
                 </Link>
               </>
             )}

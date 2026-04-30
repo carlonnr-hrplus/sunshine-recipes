@@ -1,14 +1,20 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useRecipes } from '@/hooks/useRecipes';
 import { useFavorites } from '@/hooks/useFavorites';
+import { useAuth } from '@/contexts/AuthContext';
 import { SearchBar } from '@/components/SearchBar';
 import { FilterBar } from '@/components/FilterBar';
 import { RecipeCard } from '@/components/RecipeCard';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ErrorState } from '@/components/ErrorState';
 import { EmptyState } from '@/components/EmptyState';
+import { getRecipeStats, duplicateRecipe } from '@/services/edgeFunctionService';
+import type { RecipeStats } from '@/services/edgeFunctionService';
 
 export function HomePage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const {
     recipes,
     loading,
@@ -21,6 +27,25 @@ export function HomePage() {
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('');
+
+  const [stats, setStats] = useState<RecipeStats | null>(null);
+
+  useEffect(() => {
+    getRecipeStats().then(setStats).catch(() => null);
+  }, []);
+
+  const handleDuplicate = useCallback(
+    async (recipeId: string) => {
+      if (!user) return;
+      try {
+        const newId = await duplicateRecipe(recipeId);
+        navigate(`/recipes/${newId}/edit`);
+      } catch {
+        // silent — user still on page
+      }
+    },
+    [user, navigate],
+  );
 
   const handleSearch = useCallback(
     async (query: string) => {
@@ -50,6 +75,26 @@ export function HomePage() {
           Discover and share your favorite recipes 🍽️
         </p>
       </div>
+
+      {/* Stats banner */}
+      {stats && (
+        <div className="flex flex-wrap justify-center gap-4 text-sm">
+          <span className="rounded-full bg-sunshine-50 px-4 py-1.5 font-medium text-sunshine-700">
+            📖 {stats.total_recipes} public recipe{stats.total_recipes !== 1 ? 's' : ''}
+          </span>
+          {Object.entries(stats.by_category)
+            .sort(([, a], [, b]) => b - a)
+            .slice(0, 4)
+            .map(([cat, count]) => (
+              <span
+                key={cat}
+                className="rounded-full bg-gray-100 px-4 py-1.5 text-gray-600"
+              >
+                {cat} ({count})
+              </span>
+            ))}
+        </div>
+      )}
 
       {/* Search */}
       <div className="mx-auto max-w-xl">
@@ -84,6 +129,7 @@ export function HomePage() {
               recipe={recipe}
               isFavorite={isFavorite(recipe.id)}
               onToggleFavorite={toggleFavorite}
+              onDuplicate={user ? handleDuplicate : undefined}
             />
           ))}
         </div>

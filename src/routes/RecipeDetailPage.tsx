@@ -2,6 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import type { RecipeWithAuthor } from '@/types/recipe';
 import * as recipeService from '@/services/recipeService';
+import { duplicateRecipe } from '@/services/edgeFunctionService';
 import { useAuth } from '@/contexts/AuthContext';
 import { useFavorites } from '@/hooks/useFavorites';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
@@ -24,6 +25,7 @@ export function RecipeDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [duplicating, setDuplicating] = useState(false);
   const [lightboxOpen, setLightboxOpen] = useState(false);
 
   const fetchRecipe = useCallback(async () => {
@@ -53,6 +55,18 @@ export function RecipeDetailPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to delete recipe');
       setDeleting(false);
+    }
+  };
+
+  const handleDuplicate = async () => {
+    if (!recipe) return;
+    setDuplicating(true);
+    try {
+      const newId = await duplicateRecipe(recipe.id);
+      navigate(`/recipes/${newId}/edit`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to copy recipe');
+      setDuplicating(false);
     }
   };
 
@@ -152,6 +166,17 @@ export function RecipeDetailPage() {
               aria-label={isFavorite(recipe.id) ? 'Remove from favorites' : 'Add to favorites'}
             >
               {isFavorite(recipe.id) ? '❤️' : '🤍'}
+            </button>
+          )}
+          {user && !isOwner && recipe.is_public && (
+            <button
+              type="button"
+              onClick={handleDuplicate}
+              disabled={duplicating}
+              className="rounded-lg border border-gray-200 px-3 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors disabled:opacity-50"
+              title="Copy this recipe to your account"
+            >
+              {duplicating ? 'Copying...' : '📋 Copy Recipe'}
             </button>
           )}
           {isOwner && (

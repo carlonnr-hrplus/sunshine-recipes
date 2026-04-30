@@ -1,8 +1,10 @@
 import { useEffect, useState, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useFavorites } from '@/hooks/useFavorites';
 import { useAuth } from '@/contexts/AuthContext';
 import type { FavoriteRecipe } from '@/types/recipe';
 import * as recipeService from '@/services/recipeService';
+import { duplicateRecipe } from '@/services/edgeFunctionService';
 import { RecipeCard } from '@/components/RecipeCard';
 import { LoadingSpinner } from '@/components/LoadingSpinner';
 import { ErrorState } from '@/components/ErrorState';
@@ -10,6 +12,7 @@ import { EmptyState } from '@/components/EmptyState';
 
 export function FavoritesPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { favoriteRecipeIds, isFavorite, toggleFavorite, loading: favsLoading } = useFavorites();
 
   const [recipes, setRecipes] = useState<FavoriteRecipe[]>([]);
@@ -45,6 +48,19 @@ export function FavoritesPage() {
 
   const isLoading = favsLoading || loading;
 
+  const handleDuplicate = useCallback(
+    async (recipeId: string) => {
+      if (!user) return;
+      try {
+        const newId = await duplicateRecipe(recipeId);
+        navigate(`/recipes/${newId}/edit`);
+      } catch {
+        // silent
+      }
+    },
+    [user, navigate],
+  );
+
   return (
     <div className="space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">My Favorites</h1>
@@ -69,6 +85,7 @@ export function FavoritesPage() {
               recipe={recipe}
               isFavorite={isFavorite(recipe.id)}
               onToggleFavorite={toggleFavorite}
+              onDuplicate={user ? handleDuplicate : undefined}
               isUnavailable={!recipe.is_available}
             />
           ))}

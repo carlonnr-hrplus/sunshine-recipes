@@ -8,6 +8,7 @@ import { EditRecipePage } from '@/routes/EditRecipePage';
 import { FavoritesPage } from '@/routes/FavoritesPage';
 import { LoginPage } from '@/routes/LoginPage';
 import { RegisterPage } from '@/routes/RegisterPage';
+import { ProfilePage } from '@/routes/ProfilePage';
 
 export function AppRouter() {
   return (
@@ -41,6 +42,14 @@ export function AppRouter() {
           element={
             <ProtectedRoute>
               <FavoritesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
             </ProtectedRoute>
           }
         />
