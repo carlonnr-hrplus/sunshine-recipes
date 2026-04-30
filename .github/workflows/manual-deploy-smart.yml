@@ -44,13 +44,10 @@ jobs:
         with:
           version: latest
 
-      - name: Link Supabase project
-        run: supabase link --project-ref ${{ vars.SUPABASE_PROJECT_REF }}
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-
-      - name: Push DB migrations
-        run: supabase db push
+      - name: Link Supabase project and push DB migrations
+        run: |
+          supabase link --project-ref ${{ vars.SUPABASE_PROJECT_REF }}
+          supabase db push
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
@@ -155,6 +152,7 @@ jobs:
           print(f"Functions to delete ({len(to_delete)}): {to_delete or 'none'}")
 
           failed = []
+          delete_failed = []
 
           for name in to_deploy:
               print(f"\n→ Deploying: {name}")
@@ -168,11 +166,29 @@ jobs:
           for name in to_delete:
               print(f"\n→ Deleting removed function: {name}")
               r = subprocess.run(
-                  ["supabase", "functions", "delete", name, "--no-verify-jwt"],
-                  capture_output=False,
+                  ["supabase", "functions", "delete", name],
+                  capture_output=True,
+                  text=True,
               )
-              if r.returncode != 0:
-                  print(f"  Warning: could not delete {name} (may already be gone)")
+              combined = (r.stdout + r.stderr).lower()
+              if r.returncode == 0 or "not found" in combined or "does not exist" in combined:
+                  print(f"  Deleted (or already gone): {name}")
+              else:
+                  print(r.stdout, end="")
+                  print(r.stderr, end="")
+                  print(f"  Warning: failed to delete {name} — will retry on next deploy.")
+                  delete_failed.append(name)
+
+          # Re-inject only genuinely failed deletes so next deploy retries them.
+          # Functions that were already gone are not re-queued.
+          if delete_failed:
+              with open("/tmp/fn-hashes-current.json") as f:
+                  current = json.load(f)
+              for name in delete_failed:
+                  current[name] = prev[name]
+              with open("/tmp/fn-hashes-current.json", "w") as f:
+                  json.dump(current, f, indent=2)
+              print(f"  Re-queued for next deploy: {delete_failed}")
 
           if failed:
               print(f"\nFailed to deploy: {failed}", file=sys.stderr)
