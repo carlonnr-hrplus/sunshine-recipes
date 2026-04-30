@@ -32,7 +32,7 @@ serve(async (req) => {
       .sort(([, a], [, b]) => b - a)
       .map(([name, count]) => ({ name, count }));
 
-    return new Response(JSON.stringify({ categories }), {
+    return new Response(JSON.stringify({ categories, total_count: categories.length }), {
       status: 200,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
